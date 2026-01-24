@@ -1,7 +1,7 @@
 # VPS Guardian - Makefile
 # Commands for installation, validation, and management
 
-.PHONY: help install validate status logs test-detection uninstall lint
+.PHONY: help install validate status logs test-detection uninstall lint test test-cov test-verbose
 
 # Default target
 help:
@@ -15,6 +15,9 @@ help:
 	@echo "  make test-detection - Test if detection is working (creates fake miner)"
 	@echo "  make uninstall    - Remove VPS Guardian completely"
 	@echo "  make lint         - Check Python code syntax"
+	@echo "  make test         - Run unit tests"
+	@echo "  make test-cov     - Run tests with coverage report"
+	@echo "  make test-verbose - Run tests with verbose output"
 	@echo ""
 
 # Install VPS Guardian
@@ -174,3 +177,20 @@ lint:
 	@python3 -m py_compile guardian/modules/filesystem.py && echo "✅ filesystem.py OK"
 	@python3 -m py_compile guardian/modules/response.py && echo "✅ response.py OK"
 	@echo "All Python files passed syntax check!"
+
+# Run unit tests
+test:
+	@echo "Running VPS Guardian test suite..."
+	@python3 -m pytest tests/ -v --tb=short
+
+# Run tests with coverage report
+test-cov:
+	@echo "Running tests with coverage analysis..."
+	@python3 -m pytest tests/ --cov=guardian --cov-report=term-missing --cov-report=html
+	@echo ""
+	@echo "HTML coverage report generated: htmlcov/index.html"
+
+# Run tests with verbose output
+test-verbose:
+	@echo "Running tests with verbose output..."
+	@python3 -m pytest tests/ -vv --tb=long
