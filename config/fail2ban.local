@@ -1,0 +1,20 @@
+# VPS Guardian - Fail2ban Configuration
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 3600
+findtime = 600
+
+# Aggressive ban for repeated offenders
+[sshd-aggressive]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 5
+bantime = 86400
+findtime = 3600

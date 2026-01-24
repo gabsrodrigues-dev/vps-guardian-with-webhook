@@ -1,0 +1,120 @@
+# VPS Guardian - Configuração de Exemplo
+# Copie para /opt/vps-guardian/guardian/config.yaml e ajuste conforme necessário
+
+detection:
+  # Termos suspeitos para detecção de mineradores
+  suspicious_terms:
+    - xmrig
+    - monero
+    - moonre
+    - miner
+    - hashvault
+    - cpuminer
+    - ethminer
+    - cryptonight
+    - stratum
+    - pool.minexmr
+    - supportxmr
+    - nanopool
+    - f2pool
+    - kworkerds
+    - kdevtmpfs
+    - bioset
+    - kthrotld
+    - watchdog
+    - ksoftirqd
+    - migration
+    - kworker
+    - rcu_sched
+    - irq
+    - perfctl
+
+  # Intervalo de varredura em segundos
+  scan_interval_seconds: 5
+
+# Monitoramento de Recursos
+# Premissa: Nenhum processo legítimo consome >75% por mais de 10 minutos
+resources:
+  # Threshold de CPU (porcentagem)
+  cpu_threshold_percent: 75
+
+  # Threshold de memória (porcentagem)
+  memory_threshold_percent: 75
+
+  # Notificar após N minutos de uso alto
+  notify_after_minutes: 10
+
+  # Matar processo após N minutos de uso alto
+  kill_after_minutes: 20
+
+  # Limite da VPS antes de bloqueio por abuso (referência)
+  vps_abuse_limit_minutes: 90
+
+  # Whitelist de processos (APENAS essenciais do sistema)
+  whitelist:
+    - dockerd
+    - containerd
+    - systemd
+    - sshd
+    - guardian.py
+    - journald
+    - networkd
+    # Adicione outros processos legítimos se necessário
+
+# Monitoramento de Rede
+network:
+  # Caminho para lista de mining pools
+  mining_pools_list: /opt/vps-guardian/firewall/blocklists/mining-pools.txt
+
+  # Caminho para lista de exit nodes TOR
+  tor_nodes_list: /opt/vps-guardian/firewall/blocklists/tor-exit-nodes.txt
+
+  # Portas suspeitas de mining
+  suspicious_ports:
+    - 3333
+    - 8888
+    - 14444
+    - 5555
+    - 7777
+
+# Resposta a Incidentes
+response:
+  # Diretório para quarentena de binários suspeitos
+  quarantine_dir: /var/quarantine
+
+  # Arquivo de log
+  log_file: /var/log/guardian.log
+
+  # Notificações Telegram (opcional)
+  telegram:
+    enabled: false
+    webhook_url: "https://api.telegram.org/bot<SEU_TOKEN>/sendMessage"
+    chat_id: "<SEU_CHAT_ID>"
+
+# Verificação de Integridade
+integrity:
+  # Binários críticos para verificação de hash
+  critical_binaries:
+    - /usr/bin/ps
+    - /usr/bin/top
+    - /bin/ls
+    - /usr/bin/lsof
+    - /usr/bin/netstat
+    - /usr/bin/ss
+    - /usr/sbin/sshd
+    - /usr/bin/find
+    - /usr/bin/grep
+
+  # Banco de dados de hashes
+  hash_db: /var/lib/guardian/hashes.json
+
+# Monitoramento de Filesystem
+filesystem:
+  # Diretórios suspeitos para monitorar
+  suspicious_dirs:
+    - /tmp
+    - /dev/shm
+    - /var/tmp
+
+  # Tempo máximo de modificação para considerar arquivo suspeito (minutos)
+  mtime_threshold_minutes: 5

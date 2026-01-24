@@ -1,0 +1,23 @@
+# VPS Guardian - Mining Pool Blocklist
+# Updated by update-blocklist.sh
+# Source: CoinBlockerLists + custom additions
+
+# Major Monero pools
+pool.minexmr.com
+pool.supportxmr.com
+xmrpool.eu
+monerohash.com
+moneroocean.stream
+hashvault.pro
+nanopool.org
+f2pool.com
+antpool.com
+2miners.com
+nicehash.com
+
+# Common mining ports (for reference)
+# 3333, 4444, 5555, 7777, 8888, 9999, 14433, 14444, 45700
+
+# Stratum protocols
+stratum+tcp://*
+stratum+ssl://*

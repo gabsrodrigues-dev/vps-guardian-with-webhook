@@ -1,0 +1,27 @@
+[Unit]
+Description=VPS Guardian - Anti-Cryptojacking Protection
+Documentation=https://github.com/schubert/vps-guardian
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/vps-guardian/guardian
+ExecStart=/usr/bin/python3 /opt/vps-guardian/guardian/guardian.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/log /var/quarantine /var/lib/guardian /opt/vps-guardian
+
+# Resource limits
+MemoryMax=256M
+CPUQuota=10%
+
+[Install]
+WantedBy=multi-user.target

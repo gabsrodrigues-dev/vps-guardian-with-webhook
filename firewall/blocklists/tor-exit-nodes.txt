@@ -1,0 +1,6 @@
+# VPS Guardian - TOR Exit Nodes Blocklist
+# Updated by update-blocklist.sh
+# Source: https://check.torproject.org/exit-addresses
+
+# This file will be populated by update-blocklist.sh
+# Initial placeholder - run update-blocklist.sh to populate

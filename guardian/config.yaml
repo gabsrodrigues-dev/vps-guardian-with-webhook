@@ -1,0 +1,80 @@
+detection:
+  suspicious_terms:
+    - xmrig
+    - monero
+    - moonre
+    - miner
+    - hashvault
+    - pool.support
+    - stratum
+    - nicehash
+    - cryptonight
+    - minerd
+    - cpuminer
+    - ethminer
+    - claymore
+    - phoenixminer
+    - t-rex
+    - gminer
+    - lolminer
+    - nbminer
+    - hiveos
+  scan_interval_seconds: 5
+
+# Monitoramento de Recursos - LÓGICA SIMPLIFICADA
+# Premissa: Nenhum processo legítimo consome >75% por mais de 10 minutos
+resources:
+  cpu_threshold_percent: 75
+  memory_threshold_percent: 75
+  notify_after_minutes: 10         # Notificar via Telegram após 10 minutos
+  kill_after_minutes: 20           # MATAR após 20 minutos (sem exceção)
+  vps_abuse_limit_minutes: 90      # Limite da VPS antes de bloqueio por abuso
+
+  # Whitelist mínima - APENAS processos essenciais do sistema
+  whitelist:
+    - dockerd
+    - containerd
+    - systemd
+    - sshd
+    - guardian.py
+
+network:
+  mining_pools_list: /opt/vps-guardian/firewall/blocklists/mining-pools.txt
+  tor_nodes_list: /opt/vps-guardian/firewall/blocklists/tor-exit-nodes.txt
+  suspicious_ports:
+    - 3333
+    - 4444
+    - 5555
+    - 7777
+    - 8888
+    - 9999
+    - 14433
+    - 14444
+    - 45700
+
+response:
+  quarantine_dir: /var/quarantine
+  log_file: /var/log/guardian.log
+  telegram:
+    enabled: false
+    webhook_url: null
+    chat_id: null
+
+integrity:
+  critical_binaries:
+    - /usr/bin/ps
+    - /usr/bin/top
+    - /bin/ls
+    - /usr/bin/lsof
+    - /usr/bin/netstat
+    - /usr/bin/ss
+    - /usr/bin/crontab
+    - /usr/bin/ldd
+  hash_db: /var/lib/guardian/hashes.json
+
+filesystem:
+  watch_dirs:
+    - /tmp
+    - /dev/shm
+    - /var/tmp
+  max_file_age_minutes: 5
