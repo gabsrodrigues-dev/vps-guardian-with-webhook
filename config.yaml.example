@@ -110,11 +110,11 @@ integrity:
 
 # Monitoramento de Filesystem
 filesystem:
-  # Diretórios suspeitos para monitorar
-  suspicious_dirs:
+  # Diretórios para monitorar (executáveis suspeitos)
+  watch_dirs:
     - /tmp
     - /dev/shm
     - /var/tmp
 
-  # Tempo máximo de modificação para considerar arquivo suspeito (minutos)
-  mtime_threshold_minutes: 5
+  # Arquivos modificados nos últimos N minutos são considerados suspeitos
+  max_file_age_minutes: 30
