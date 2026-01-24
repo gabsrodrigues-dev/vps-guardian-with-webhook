@@ -7,8 +7,11 @@ Detects suspicious processes by name, command line, and execution path.
 import os
 import re
 import psutil
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+import logging
+
+logger = logging.getLogger('guardian.detector')
 
 @dataclass
 class Threat:
@@ -24,7 +27,8 @@ class Detector:
     """Detects suspicious processes based on various patterns."""
 
     # Patterns that indicate random/obfuscated process names (common in malware)
-    RANDOM_NAME_PATTERN = re.compile(r'^[a-z]{10,}$|^[a-zA-Z0-9]{16,}$')
+    # Limit to 100 chars to prevent ReDoS attacks
+    RANDOM_NAME_PATTERN = re.compile(r'^[a-z]{10,100}$|^[a-zA-Z0-9]{16,100}$')
 
     # Processes that masquerade as kernel workers
     FAKE_KERNEL_PATTERNS = ['kworkerds', 'kdevtmpfs', 'kthreaddi']

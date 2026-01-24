@@ -22,6 +22,43 @@ error() { echo -e "${RED}[ERROR]${NC} $1" >&2; exit 1; }
 # Check root
 [[ $EUID -ne 0 ]] && error "This script must be run as root (sudo ./setup.sh)"
 
+# CRITICAL: Check for SSH keys BEFORE making any changes
+# This prevents lockout if password auth is disabled
+log "[PRE-FLIGHT] Checking SSH key access..."
+SSH_KEYS_FOUND=false
+
+# Check root user's authorized_keys
+if [[ -f /root/.ssh/authorized_keys ]] && [[ -s /root/.ssh/authorized_keys ]]; then
+    SSH_KEYS_FOUND=true
+fi
+
+# Check for any user with sudo access that has SSH keys
+for user_home in /home/*; do
+    if [[ -f "$user_home/.ssh/authorized_keys" ]] && [[ -s "$user_home/.ssh/authorized_keys" ]]; then
+        SSH_KEYS_FOUND=true
+        break
+    fi
+done
+
+if [[ "$SSH_KEYS_FOUND" == "false" ]]; then
+    echo ""
+    warn "============================================"
+    warn "  WARNING: NO SSH KEYS DETECTED!"
+    warn "============================================"
+    warn ""
+    warn "This script will disable password authentication."
+    warn "Without SSH keys, you will be LOCKED OUT of your server!"
+    warn ""
+    warn "To add SSH keys, run from your LOCAL machine:"
+    warn "  ssh-copy-id user@your-server"
+    warn ""
+    read -p "Continue anyway? (type 'yes' to confirm): " CONFIRM
+    if [[ "$CONFIRM" != "yes" ]]; then
+        error "Aborted. Add SSH keys first, then run this script again."
+    fi
+    warn "Proceeding without SSH keys (at your own risk)..."
+fi
+
 # Detect distro
 if [[ -f /etc/debian_version ]]; then
     DISTRO="debian"

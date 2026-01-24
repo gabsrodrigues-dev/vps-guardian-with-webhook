@@ -7,9 +7,16 @@ Detects connections to known mining pools and TOR exit nodes.
 import os
 import socket
 import psutil
-from typing import Dict, List, Any, Set
+from typing import Dict, List, Any, Set, Optional
 from dataclasses import dataclass
 from pathlib import Path
+from functools import lru_cache
+import logging
+
+logger = logging.getLogger('guardian.network')
+
+# Set default socket timeout to prevent blocking
+socket.setdefaulttimeout(0.5)
 
 @dataclass
 class NetworkThreat:
@@ -96,7 +103,15 @@ class NetworkMonitor:
 
         return threats
 
-    def _analyze_connection(self, pid: int, name: str, ip: str, port: int) -> NetworkThreat | None:
+    @lru_cache(maxsize=1000)
+    def _reverse_dns_cached(self, ip: str) -> Optional[str]:
+        """Cached reverse DNS lookup with timeout."""
+        try:
+            return socket.gethostbyaddr(ip)[0].lower()
+        except (socket.herror, socket.gaierror, socket.timeout, OSError):
+            return None
+
+    def _analyze_connection(self, pid: int, name: str, ip: str, port: int) -> Optional[NetworkThreat]:
         """Analyze a single connection for threats."""
 
         # Check if connecting to mining port
@@ -113,16 +128,14 @@ class NetworkMonitor:
                 reason="Connection to TOR exit node"
             )
 
-        # Try reverse DNS lookup for domain matching
-        try:
-            hostname = socket.gethostbyaddr(ip)[0].lower()
+        # Try reverse DNS lookup with cache (prevents blocking)
+        hostname = self._reverse_dns_cached(ip)
+        if hostname:
             for domain in self.blocked_domains:
                 if domain in hostname:
                     return NetworkThreat(
                         pid=pid, name=name, remote_ip=ip, remote_port=port,
                         reason=f"Connection to blocked domain: {domain}"
                     )
-        except (socket.herror, socket.gaierror):
-            pass
 
         return None

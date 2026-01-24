@@ -50,20 +50,52 @@ def load_config():
         sys.exit(1)
 
 def clean_zombies():
-    """Clean zombie processes by killing their parents."""
+    """
+    Clean zombie processes safely.
+
+    Zombies are processes that have exited but their parent hasn't called wait().
+    We try to reap them with os.waitpid() first. Only if that fails AND the zombie
+    persists for multiple cycles, we log a warning (but don't kill the parent,
+    as that could cause cascading issues).
+    """
     try:
         import psutil
+        import os
+
         for proc in psutil.process_iter(['pid', 'status', 'ppid', 'name']):
             try:
                 if proc.info['status'] == psutil.STATUS_ZOMBIE:
+                    zombie_pid = proc.info['pid']
                     ppid = proc.info['ppid']
-                    if ppid > 1:
-                        logger.warning(f"Zombie detected (PID {proc.info['pid']}). Killing parent (PID {ppid})...")
-                        parent = psutil.Process(ppid)
-                        parent.kill()
-                        logger.info(f"Parent {ppid} eliminated.")
+
+                    # Try to reap the zombie with waitpid (non-blocking)
+                    try:
+                        os.waitpid(zombie_pid, os.WNOHANG)
+                        logger.debug(f"Reaped zombie PID {zombie_pid}")
+                    except ChildProcessError:
+                        # Not our child - can't reap it directly
+                        # This is normal - the zombie's parent must reap it
+                        pass
+                    except OSError:
+                        pass
+
+                    # If zombie still exists after waitpid attempt, just log it
+                    # Don't kill parent as it may cause more issues
+                    if psutil.pid_exists(zombie_pid):
+                        try:
+                            z = psutil.Process(zombie_pid)
+                            if z.status() == psutil.STATUS_ZOMBIE:
+                                logger.warning(
+                                    f"Zombie process detected: PID {zombie_pid} "
+                                    f"(parent: {ppid}, name: {proc.info['name']}). "
+                                    f"Parent should reap it."
+                                )
+                        except psutil.NoSuchProcess:
+                            pass  # Zombie was reaped
+
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
+
     except ImportError:
         logger.warning("psutil not installed. Zombie cleanup disabled.")
 

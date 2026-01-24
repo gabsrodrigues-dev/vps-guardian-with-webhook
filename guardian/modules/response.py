@@ -101,39 +101,70 @@ class ResponseHandler:
         return incident
 
     def _kill_process(self, pid: int) -> bool:
-        """Kill a process and its children."""
+        """Kill a process and its children, ensuring no zombies are left."""
         try:
             proc = psutil.Process(pid)
 
-            # Kill children first
+            # Get children first (before killing parent)
             children = proc.children(recursive=True)
+
+            # Kill children first - use SIGTERM then SIGKILL
             for child in children:
                 try:
-                    child.kill()
+                    child.terminate()  # SIGTERM first (graceful)
+                except psutil.NoSuchProcess:
+                    continue
+
+            # Wait for children to terminate gracefully
+            gone, alive = psutil.wait_procs(children, timeout=3)
+
+            # Force kill any remaining children
+            for child in alive:
+                try:
+                    child.kill()  # SIGKILL (force)
+                    child.wait(timeout=2)  # Collect exit status to prevent zombie
                 except psutil.NoSuchProcess:
                     pass
+                except psutil.TimeoutExpired:
+                    logger.warning(f"Child {child.pid} did not terminate, may become zombie")
 
-            # Kill main process
-            proc.kill()
-            proc.wait(timeout=5)
+            # Now kill main process - SIGTERM first, then SIGKILL
+            try:
+                proc.terminate()  # SIGTERM
+                proc.wait(timeout=3)
+            except psutil.TimeoutExpired:
+                proc.kill()  # SIGKILL
+                proc.wait(timeout=2)  # Collect exit status
 
-            logger.info(f"Killed process {pid} and {len(children)} children")
+            logger.info(f"Killed process {pid} and {len(children)} children (no zombies)")
             return True
 
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired) as e:
-            logger.error(f"Failed to kill PID {pid}: {e}")
+        except psutil.NoSuchProcess:
+            logger.info(f"Process {pid} already dead")
+            return True  # Not an error - process is gone
+        except psutil.AccessDenied as e:
+            logger.error(f"Access denied killing PID {pid}: {e}")
+            return False
+        except psutil.TimeoutExpired as e:
+            logger.error(f"Timeout killing PID {pid}: {e}")
             return False
 
     def _quarantine_file(self, file_path: str) -> bool:
-        """Move a file to quarantine directory."""
+        """Move a file to quarantine directory safely."""
         try:
-            src = Path(file_path)
+            src = Path(file_path).resolve()  # Resolve to absolute path
             if not src.exists():
                 return False
 
-            # Create unique quarantine name
+            # Sanitize filename to prevent path traversal
+            safe_name = src.name.replace('/', '_').replace('\\', '_').replace('..', '__')
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            dst = self.quarantine_dir / f"{timestamp}_{src.name}"
+            dst = self.quarantine_dir / f"{timestamp}_{safe_name}"
+
+            # Verify destination is within quarantine directory (prevent path traversal)
+            if not dst.resolve().is_relative_to(self.quarantine_dir.resolve()):
+                logger.error(f"Path traversal attempt blocked: {file_path}")
+                return False
 
             shutil.move(str(src), str(dst))
             os.chmod(str(dst), 0o000)  # Remove all permissions

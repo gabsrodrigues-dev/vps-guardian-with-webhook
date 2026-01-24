@@ -43,13 +43,35 @@ setup_ipsets() {
     # Flush existing entries
     ipset flush "$IPSET_TOR"
 
-    # Load TOR exit nodes
+    # Load TOR exit nodes with IP validation (prevents command injection)
     if [[ -f "$BLOCKLIST_DIR/tor-exit-nodes.txt" ]]; then
+        local valid_count=0
+        local invalid_count=0
         while IFS= read -r ip; do
+            # Skip empty lines and comments
             [[ -z "$ip" || "$ip" == \#* ]] && continue
-            ipset add "$IPSET_TOR" "$ip" 2>/dev/null || true
+
+            # Validate IPv4 format (strict regex to prevent injection)
+            if [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                # Additional validation: each octet must be 0-255
+                IFS='.' read -ra octets <<< "$ip"
+                valid=true
+                for octet in "${octets[@]}"; do
+                    if (( octet > 255 )); then
+                        valid=false
+                        break
+                    fi
+                done
+                if $valid; then
+                    ipset add "$IPSET_TOR" "$ip" 2>/dev/null && ((valid_count++)) || true
+                else
+                    ((invalid_count++))
+                fi
+            else
+                ((invalid_count++))
+            fi
         done < "$BLOCKLIST_DIR/tor-exit-nodes.txt"
-        log "Loaded $(ipset list "$IPSET_TOR" | grep -c "^[0-9]") TOR exit nodes"
+        log "Loaded $valid_count TOR exit nodes ($invalid_count invalid entries skipped)"
     fi
 }
 
