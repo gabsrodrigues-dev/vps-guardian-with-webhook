@@ -165,14 +165,14 @@ cd "$INSTALL_DIR"
 
 # Step 7: Initialize integrity database and auditd rules
 log "[7/8] Initializing integrity checker and auditd rules..."
-cd "$INSTALL_DIR/guardian"
+cd "$INSTALL_DIR"
 python3 -c "
 import sys
-sys.path.insert(0, '.')
-from modules.integrity import IntegrityChecker
+sys.path.insert(0, '$INSTALL_DIR')
+from guardian.modules.integrity import IntegrityChecker
 import yaml
 
-with open('config.yaml') as f:
+with open('guardian/config.yaml') as f:
     config = yaml.safe_load(f)
 
 checker = IntegrityChecker(config)

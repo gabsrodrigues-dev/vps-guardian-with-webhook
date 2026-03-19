@@ -18,8 +18,8 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 import logging
 
-from guardian.modules.forensics import ForensicsCollector
-from guardian.modules.webhook import WebhookNotifier
+from .forensics import ForensicsCollector
+from .webhook import WebhookNotifier
 
 logger = logging.getLogger('guardian.response')
 

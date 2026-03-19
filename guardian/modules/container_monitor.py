@@ -96,7 +96,7 @@ class ContainerMonitor:
             # Get stats in JSON format
             result = subprocess.run(
                 ['docker', 'stats', '--no-stream', '--format',
-                 '{"id":"{{.ID}}","name":"{{.Name}}","cpu":"{{.CPUPerc}}","image":"{{.Image}}"}'],
+                 '{"id":"{{.ID}}","name":"{{.Name}}","cpu":"{{.CPUPerc}}"}'],
                 capture_output=True,
                 text=True,
                 timeout=30
@@ -115,6 +115,7 @@ class ContainerMonitor:
                     # Parse CPU percentage (e.g., "150.25%" -> 150.25)
                     cpu_str = data.get('cpu', '0%').rstrip('%')
                     data['cpu_percent'] = float(cpu_str) if cpu_str else 0.0
+                    data['image'] = self._get_container_image(data['id'])
                     containers.append(data)
                 except (json.JSONDecodeError, ValueError) as e:
                     self.logger.debug(f"Failed to parse stats line: {line}, error: {e}")
@@ -127,6 +128,21 @@ class ContainerMonitor:
         except Exception as e:
             self.logger.error(f"Failed to get container stats: {e}")
             return []
+
+    def _get_container_image(self, container_id: str) -> str:
+        """Get image name for a specific container."""
+        try:
+            result = subprocess.run(
+                ['docker', 'inspect', '--format', '{{.Config.Image}}', container_id],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except Exception as e:
+            self.logger.debug(f"Failed to get image for {container_id}: {e}")
+        return ''
 
     def _get_container_labels(self, container_id: str) -> Dict[str, str]:
         """Get labels for a specific container."""
