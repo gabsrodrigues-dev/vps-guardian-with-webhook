@@ -7,8 +7,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/vps-guardian/guardian
-ExecStart=/usr/bin/python3 /opt/vps-guardian/guardian/guardian.py
+WorkingDirectory=/opt/vps-guardian
+ExecStart=/usr/bin/python3 -m guardian.guardian
 Restart=always
 RestartSec=5
 StandardOutput=journal

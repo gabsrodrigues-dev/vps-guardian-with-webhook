@@ -35,7 +35,7 @@ VPS Guardian implements **defense in depth** with 4 layers:
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                    LAYER 3: RESPONSE                        │
-│     Kill process │ Quarantine binary │ Log │ Telegram       │
+│  Kill process │ Quarantine binary │ Log │ Telegram │ Webhook│
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -141,6 +141,62 @@ resources:
 2. Get the bot token
 3. Find your chat_id with [@userinfobot](https://t.me/userinfobot)
 4. Update `config.yaml`
+5. Apply the changes:
+
+```bash
+sudo systemctl restart guardian
+```
+
+### Configure Webhook
+
+Send incident notifications to any HTTP endpoint (Slack, Discord, SIEM, custom dashboards, etc.).
+
+Edit `/opt/vps-guardian/guardian/config.yaml`:
+
+```yaml
+response:
+  webhook:
+    enabled: true
+    url: "https://your-endpoint.example.com/guardian/webhook"
+    auth_token: "your-secret-token"    # If omitted, auto-generated and shown in logs
+    timeout_seconds: 10
+    retry_count: 2
+```
+
+Apply the changes:
+
+```bash
+sudo systemctl restart guardian
+```
+
+**Your endpoint must accept POST requests with:**
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <auth_token>` |
+
+**Body (JSON):**
+
+```json
+{
+  "event": "threat_detected",
+  "timestamp": "2026-01-24T12:00:00",
+  "hostname": "my-vps",
+  "severity": "critical",
+  "process": {"pid": 1234, "name": "xmrig"},
+  "reason": "Suspicious process: mining detected",
+  "action_taken": "killed+quarantined",
+  "details": {"cpu_percent": 95.5},
+  "forensics_path": "/var/lib/guardian/forensics/..."
+}
+```
+
+**Event types:** `threat_detected`, `container_warning`, `process_warning`, `test`
+
+**Severity levels:** `critical`, `warning`, `info`
+
+Return any `2xx` status code to confirm receipt.
 
 ## Useful Commands
 
@@ -286,7 +342,7 @@ VPS Guardian implementa **defesa em profundidade** com 4 camadas:
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                    CAMADA 3: RESPOSTA                       │
-│     Kill processo │ Quarentena binário │ Log │ Telegram     │
+│ Kill processo │ Quarentena binário │ Log │ Telegram │ Webhook│
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -392,6 +448,62 @@ resources:
 2. Obtenha o token do bot
 3. Descubra seu chat_id com [@userinfobot](https://t.me/userinfobot)
 4. Atualize o `config.yaml`
+5. Aplique as mudanças:
+
+```bash
+sudo systemctl restart guardian
+```
+
+### Configurar Webhook
+
+Envie notificações de incidentes para qualquer endpoint HTTP (Slack, Discord, SIEM, dashboards customizados, etc.).
+
+Edite `/opt/vps-guardian/guardian/config.yaml`:
+
+```yaml
+response:
+  webhook:
+    enabled: true
+    url: "https://seu-endpoint.exemplo.com/guardian/webhook"
+    auth_token: "seu-token-secreto"    # Se omitido, gerado automaticamente e exibido nos logs
+    timeout_seconds: 10
+    retry_count: 2
+```
+
+Aplique as mudanças:
+
+```bash
+sudo systemctl restart guardian
+```
+
+**Seu endpoint deve aceitar requisições POST com:**
+
+| Header | Valor |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <auth_token>` |
+
+**Body (JSON):**
+
+```json
+{
+  "event": "threat_detected",
+  "timestamp": "2026-01-24T12:00:00",
+  "hostname": "minha-vps",
+  "severity": "critical",
+  "process": {"pid": 1234, "name": "xmrig"},
+  "reason": "Suspicious process: mining detected",
+  "action_taken": "killed+quarantined",
+  "details": {"cpu_percent": 95.5},
+  "forensics_path": "/var/lib/guardian/forensics/..."
+}
+```
+
+**Tipos de evento:** `threat_detected`, `container_warning`, `process_warning`, `test`
+
+**Níveis de severidade:** `critical`, `warning`, `info`
+
+Retorne qualquer status `2xx` para confirmar recebimento.
 
 ## Comandos Úteis
 

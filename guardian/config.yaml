@@ -59,6 +59,12 @@ response:
     enabled: false
     webhook_url: null
     chat_id: null
+  webhook:
+    enabled: false
+    url: null
+    auth_token: null
+    timeout_seconds: 10
+    retry_count: 2
 
 integrity:
   critical_binaries:
