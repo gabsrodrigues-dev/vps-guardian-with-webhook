@@ -40,6 +40,36 @@ class PersistenceThreat:
 class PersistenceScanner:
     """Single Responsibility: Scan for and detect persistence mechanisms."""
 
+    DEFAULT_ALLOWED_PATHS = {
+        PersistenceType.CRONTAB: {
+            '/etc/cron.daily/apt-compat',
+            '/etc/cron.daily/google-chrome',
+            '/etc/cron.daily/rkhunter',
+            '/etc/cron.weekly/rkhunter',
+            '/etc/cron.d/staticroute',
+        },
+        PersistenceType.RC_SCRIPT: {
+            '/etc/init.d/plymouth',
+            '/etc/init.d/postfix',
+            '/etc/init.d/fail2ban',
+            '/etc/init.d/docker',
+            '/etc/init.d/x11-common',
+            '/etc/init.d/nginx',
+            '/etc/init.d/cron',
+            '/etc/init.d/kmod',
+            '/etc/init.d/rsync',
+            '/etc/init.d/iscsid',
+            '/etc/init.d/clamav-daemon',
+            '/etc/init.d/clamav-freshclam',
+        },
+    }
+
+    DEFAULT_ALLOWED_CONTENT_PATTERNS = {
+        PersistenceType.RC_SCRIPT: [
+            r'RUNLEVEL="\$\(/sbin/runlevel \| cut -d " " -f 2\)"',
+        ],
+    }
+
     # Patterns that indicate malicious/suspicious behavior
     SUSPICIOUS_PATTERNS = [
         (r'wget\s+.*\|\s*(?:sh|bash)', 'Download and execute via wget'),
@@ -71,12 +101,36 @@ class PersistenceScanner:
         self.rc_config = persistence_config.get('rc_scripts', {})
         self.ssh_config = persistence_config.get('ssh_keys', {})
         self.logger = logging.getLogger('guardian.persistence')
+        allowed_paths_config = persistence_config.get('allowed_paths', {})
+        allowed_content_config = persistence_config.get('allowed_content_patterns', {})
 
         # Compile regex patterns once for performance
         self.compiled_patterns = [
             (re.compile(pattern, re.IGNORECASE), description)
             for pattern, description in self.SUSPICIOUS_PATTERNS
         ]
+
+        self.allowed_paths = {
+            PersistenceType.CRONTAB: set(self.DEFAULT_ALLOWED_PATHS.get(PersistenceType.CRONTAB, set())),
+            PersistenceType.RC_SCRIPT: set(self.DEFAULT_ALLOWED_PATHS.get(PersistenceType.RC_SCRIPT, set())),
+            PersistenceType.SYSTEMD_SERVICE: set(self.DEFAULT_ALLOWED_PATHS.get(PersistenceType.SYSTEMD_SERVICE, set())),
+            PersistenceType.SYSTEMD_TIMER: set(self.DEFAULT_ALLOWED_PATHS.get(PersistenceType.SYSTEMD_TIMER, set())),
+            PersistenceType.SSH_KEY: set(self.DEFAULT_ALLOWED_PATHS.get(PersistenceType.SSH_KEY, set())),
+        }
+
+        for key, paths in allowed_paths_config.items():
+            persistence_type = self._parse_persistence_type(key)
+            if persistence_type is None:
+                continue
+            self.allowed_paths[persistence_type].update(paths or [])
+
+        self.allowed_content_patterns = {}
+        for persistence_type in PersistenceType:
+            patterns = list(self.DEFAULT_ALLOWED_CONTENT_PATTERNS.get(persistence_type, []))
+            patterns.extend(allowed_content_config.get(persistence_type.value, []) or [])
+            self.allowed_content_patterns[persistence_type] = [
+                re.compile(pattern, re.IGNORECASE) for pattern in patterns
+            ]
 
         # Load or initialize SSH key database
         self._known_ssh_keys: Optional[Dict[str, Any]] = None
@@ -253,6 +307,9 @@ class PersistenceScanner:
         if not Path(path).is_file():
             return threats
 
+        if path in self.allowed_paths.get(persistence_type, set()):
+            return threats
+
         try:
             content = self._read_file_safely(path)
             if not content:
@@ -262,6 +319,9 @@ class PersistenceScanner:
             for line in content.split('\n'):
                 line = line.strip()
                 if not line or line.startswith('#'):
+                    continue
+
+                if self._is_allowed_line(persistence_type, line):
                     continue
 
                 for pattern_re, description in self.compiled_patterns:
@@ -280,6 +340,20 @@ class PersistenceScanner:
             self.logger.debug(f"Error scanning file {path}: {e}")
 
         return threats
+
+    def _parse_persistence_type(self, value: str) -> Optional[PersistenceType]:
+        """Convert config key to persistence type."""
+        try:
+            return PersistenceType(value)
+        except ValueError:
+            return None
+
+    def _is_allowed_line(self, persistence_type: PersistenceType, line: str) -> bool:
+        """Check if a matched line is explicitly allowed."""
+        for pattern in self.allowed_content_patterns.get(persistence_type, []):
+            if pattern.search(line):
+                return True
+        return False
 
     def _scan_directory(self, directory: str, persistence_type: PersistenceType, pattern: str = '*') -> List[PersistenceThreat]:
         """Scan all files in a directory matching pattern."""

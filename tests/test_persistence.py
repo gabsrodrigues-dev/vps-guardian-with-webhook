@@ -256,6 +256,40 @@ class TestPersistenceScanner:
         suspicious_found = [t for t in cron_threats if 'apt' in t.content_snippet or 'backup.sh' in t.content_snippet]
         assert len(suspicious_found) == 0
 
+    def test_ignore_default_allowed_cron_path(self, persistence_config, tmp_path):
+        """Should ignore default allowed cron files to reduce alert noise."""
+        cron_daily = tmp_path / 'etc' / 'cron.daily'
+        cron_daily.mkdir(parents=True, exist_ok=True)
+        allowed_file = cron_daily / 'apt-compat'
+        allowed_file.write_text('RUN_PARTS=/etc/cron.daily\n')
+
+        persistence_config['persistence']['allowed_paths'] = {
+            'crontab': [str(allowed_file)]
+        }
+
+        scanner = PersistenceScanner(persistence_config)
+        threats = scanner.scan()
+
+        ignored = [t for t in threats if t.path == str(allowed_file)]
+        assert len(ignored) == 0
+
+    def test_ignore_allowed_rc_script_line(self, persistence_config, tmp_path):
+        """Should ignore configured legitimate rc script command substitution lines."""
+        initd = tmp_path / 'etc' / 'init.d'
+        initd.mkdir(parents=True, exist_ok=True)
+        script_file = initd / 'plymouth'
+        script_file.write_text('RUNLEVEL="$(/sbin/runlevel | cut -d " " -f 2)"\n')
+
+        persistence_config['persistence']['allowed_content_patterns'] = {
+            'rc_script': [r'RUNLEVEL="\$\(/sbin/runlevel \| cut -d " " -f 2\)"']
+        }
+
+        scanner = PersistenceScanner(persistence_config)
+        threats = scanner.scan()
+
+        ignored = [t for t in threats if t.path == str(script_file)]
+        assert len(ignored) == 0
+
     def test_not_detect_legitimate_systemd_service(self, persistence_config, tmp_path):
         """Should NOT flag legitimate systemd services."""
         systemd_path = tmp_path / 'etc' / 'systemd' / 'system'

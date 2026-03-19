@@ -281,6 +281,34 @@ persistence:
     known_keys_db: /var/lib/guardian/known_ssh_keys.json
     alert_on_new: true
 
+  # Whitelist para mecanismos legítimos do sistema
+  # Use isso para evitar spam de webhook/logs com cron jobs e init scripts confiáveis
+  allowed_paths:
+    crontab:
+      - /etc/cron.daily/apt-compat
+      - /etc/cron.daily/google-chrome
+      - /etc/cron.daily/rkhunter
+      - /etc/cron.weekly/rkhunter
+      - /etc/cron.d/staticroute
+    rc_script:
+      - /etc/init.d/plymouth
+      - /etc/init.d/postfix
+      - /etc/init.d/fail2ban
+      - /etc/init.d/docker
+      - /etc/init.d/x11-common
+      - /etc/init.d/nginx
+      - /etc/init.d/cron
+      - /etc/init.d/kmod
+      - /etc/init.d/rsync
+      - /etc/init.d/iscsid
+      - /etc/init.d/clamav-daemon
+      - /etc/init.d/clamav-freshclam
+
+  # Permite linhas específicas que parecem suspeitas, mas são legítimas no sistema
+  allowed_content_patterns:
+    rc_script:
+      - 'RUNLEVEL="\$\(/sbin/runlevel \| cut -d " " -f 2\)"'
+
 # Container Awareness
 # Detecta se processos estão em containers e aplica ações específicas
 containers:
