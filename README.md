@@ -48,7 +48,7 @@ VPS Guardian implements **defense in depth** with 4 layers:
 
 ```bash
 # Clone the repository
-git clone https://github.com/rfschubert/vps-guardian.git
+git clone https://github.com/gabsrodrigues-dev/vps-guardian.git
 cd vps-guardian
 
 # Install
@@ -355,7 +355,7 @@ VPS Guardian implementa **defesa em profundidade** com 4 camadas:
 
 ```bash
 # Clone o repositório
-git clone https://github.com/rfschubert/vps-guardian.git
+git clone https://github.com/gabsrodrigues-dev/vps-guardian.git
 cd vps-guardian
 
 # Instale
